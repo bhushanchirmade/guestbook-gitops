@@ -41,38 +41,33 @@ jobs:
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
 
-    - name: Build image
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        ECR_REPOSITORY: guestbook
+    - name: Build and tag the image
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY
+        docker build \
+          -t $CONTAINER_IMAGE \
+          -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE ./php-redis
 
-    # Set image tag in kustomization
-
-    # - name: Set image tag
-    #   run: |
-    #       cd deploy
-    #       kustomize edit set image $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE
-    #       cat kustomization.yaml
-    # - name: Commit kustomization
-    #   run: |
-    #       git config --local user.email "action@github.com"
-    #       git config --local user.name "GitHub Action"
-    #       git commit -a -m "$CONTAINER_IMAGE"
-    # - name: Push changes to master
-    #   uses: ad-m/github-push-action@master
-    #   with:
-    #       github_token: ${{ secrets.GITHUB_TOKEN }}
-    #       branch: master
-    #       force: true       
+    - name: Set image tag
+      run: |
+          cd deploy
+          kustomize edit set image $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE
+          cat kustomization.yaml
     
-    # # Add additional steps here like scanning of image
+    - name: Commit kustomization
+      run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git commit -a -m "$CONTAINER_IMAGE"
+    
+    - name: Push changes to master
+      uses: ad-m/github-push-action@master
+      with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: master
+          force: true       
 
-    # # Only push to registry on master
-    # - name: Push
-    #   if: github.ref == 'refs/heads/master'
-    #   run: |
-    #     # Push image to AWS ECR
-    #     docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE
+    - name: Push
+      if: github.ref == 'refs/heads/master'
+      run: |
+        # Push image to AWS ECR
+        docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$CONTAINER_IMAGE
